@@ -5,7 +5,7 @@
 
 -------------
 
-* приложение data_fetcher
+* приложение dec_test_app
 - contract_path: contract.yaml
 - entry: openapi
 - description: что-то делает
