@@ -1,1 +1,149 @@
-# mai_st
+#+OPTIONS: num:nil
+#+OPTIONS: ^:{}
+#+HTML_HEAD_EXTRA: <style> #content { margin: 0; } .collabsible { cursor: pointer; user-select: none; } .collabsible-content { display: none; overflow: hidden; } .collabsible::before { content: '˅'; display: inline-block; transition: 0.5s; } .rotate-90::before { transform: rotate(-90deg); } </style>
+#+HTML_HEAD_EXTRA: <script> function toggleCollabsible(heading) { let element = heading; while (element.nextElementSibling && !element.nextElementSibling.tagName.startsWith('H')) { let content = element.nextElementSibling; content.classList.toggle('collabsible-content'); element = content; } } document.addEventListener('DOMContentLoaded', () => { const headingTags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']; headingTags.forEach(tag => { document.querySelectorAll(tag).forEach(heading => { heading.classList.add('collabsible', 'rotate-90'); heading.addEventListener('click', () => { heading.classList.toggle('rotate-90'); toggleCollabsible(heading); }); }); }); }); </script>
+
+-------------
+
+* приложение data_fetcher
+- contract_path: contract.yaml
+- entry: openapi
+- description: что-то делает
+- version: 0.0.1
+- url: dec_app
+
+** веб-операция getAllCommunications
+*** конвертер GetAllCommunicationsApiRequest -> DBSelectInput
+| Input Name         | Input Type | -> | Output Name | Output Type | Описание |
+|--------------------+------------+----+-------------+-------------+----------|
+| queryParams.userId | String     |    | userId      | String      |          |
+|--------------------+------------+----+-------------+-------------+----------|
+- MDC: queryParams.user_id:userId
+
+*** база Communication GetCommunications
+- dbtype: postgres
+- strategy: all
+#+BEGIN_SRC sql
+SELECT * FROM communication WHERE user_id = :user_id
+#+END_SRC
+
+*** (end) конвертер DBSelectOutput -> GetAllCommunicationsApiResponse
+| Input Name    | Input Type | -> | Output Name                       | Output Type | Описание |
+|---------------+------------+----+-----------------------------------+-------------+----------|
+| rows[].id     | Long       |    | bodyParam.communications[].id     | Long        |          |
+| rows[].name   | String     |    | bodyParam.communications[].name   | String      |          |
+| rows[].status | String     |    | bodyParam.communications[].status | String      |          |
+|---------------+------------+----+-----------------------------------+-------------+----------|
+| rows[].time   | Timestamp  |    | bodyParam.communications[].time   | Timestamp   |          |
+|---------------+------------+----+-----------------------------------+-------------+----------|
+
+** кафка-операция insertCommunications
+- conusmer_type: json
+- topic_name: communication.input
+- auto_statup: true
+- retry: false
+*** конвертер InsertCommunicationsRequest -> CommunicationAggregationInput
+| Input Name              | Input Type | ->             | Output Name      | Output Type | Описание |
+|-------------------------+------------+----------------+------------------+-------------+----------|
+| userId                  | String     |                | userId           | String      |          |
+|-------------------------+------------+----------------+------------------+-------------+----------|
+| communications[].name   | String     | prepareInserts | inserts[].name   | String      |          |
+| communications[].status | String     |                | inserts[].status | String      |          |
+| communications[].time   | Instant    |                | inserts[].time   | Timestamp   |          |
+|-------------------------+------------+----------------+------------------+-------------+----------|
+- MDC: userId:userId
+
+*** агрегация 
+**** ветка
+- foreach: insert in communicationInput.inserts
+***** конвертер AggregationBranchInput -> insertCommunicationInput
+| Input Name               | Input Type | -> | Output Name | Output Type | Описание |
+|--------------------------+------------+----+-------------+-------------+----------|
+| aggregationBranch.userId | String     |    | userId      | String      |          |
+| insert.name              | String     |    | name        | String      |          |
+| insert.status            | String     |    | status      | String      |          |
+| insert.time              | Timestamp  |    | time        | Timestamp   |          |
+|--------------------------+------------+----+-------------+-------------+----------|
+
+***** база Communication InsertCommunication
+- dbtype: postgres
+- procedure: sandbox.insert_user_communication
+
+***** (end) конвертер InsertCommunicationOutput -> AggregationBranchOutput
+| Input Name | Input Type | -> | Output Name | Output Type | Описание |
+|------------+------------+----+-------------+-------------+----------|
+| id         | String     |    |             |             |          |
+|------------+------------+----+-------------+-------------+----------|
+- MDC: id:uinsertedId
+
+** веб-операция sendNewClientId
+*** конвертер SendNewClientIdApiRequest -> GetNewIdWebClientInput
+| Input Name           | Input Type | -> | Output Name          | Output Type | Описание |
+|----------------------+------------+----+----------------------+-------------+----------|
+| bodyParam.userId     | String     |    | bodyParam.userId     | String      |          |
+| bodyParam.userIdType | String     |    | bodyParam.userIdType | String      |          |
+|----------------------+------------+----+----------------------+-------------+----------|
+- MDC: bodyParam.user_id:userId
+
+*** веб-клиент MasterIdService GetNewId
+- method: POST
+- uri: /new_id
+- webclient_contract_path: masterIdService/contract.yaml
+- config_properties_prefix: rest.master-id-service
+- exceptions: GetNewIdWebClientErrorException
++ getNewIdWebClientErrorException :: ошибка GetNewIdWebClientError
+
+*** конвертер GetNewIdWebClientOutput -> SendNewIdToKafkaInput
+| Input Name                              | Input Type | -> | Output Name | Output Type | Описание |
+|-----------------------------------------+------------+----+-------------+-------------+----------|
+| bodyParam.newUserId                     | String     |    | newUserId   | String      |          |
+| GetNewIdWebClientInput/bodyParam.userId | String     |    | oldUserId   | String      |          |
+|-----------------------------------------+------------+----+-------------+-------------+----------|
+
+*** SendNewIdToKafka
+- producer_type: json
+- topic_name: user.id.input
+- auto_statup: true
+
+*** (end) конвертер SendNewIdToKafkaOutput -> SendNewClientIdApiResponse
+| Input Name | Input Type | -> | Output Name | Output Type | Описание |
+|------------+------------+----+-------------+-------------+----------|
+|            |            |    |             |             |          |
+|------------+------------+----+-------------+-------------+----------|
+
+*** (end) GetNewIdWebClientError
+- code: 400
+| Input Name | Input Type | -> | Output Name                                                   | Output Type | Описание |
+|------------+------------+----+---------------------------------------------------------------+-------------+----------|
+|            |            |    | userError = "Возникла ошибка при обращении к MasterIdService" | String      |          |
+|------------+------------+----+---------------------------------------------------------------+-------------+----------|
+
+** функции
+*** функция timestampToString
+| Input Name | Input Type | -> | Output Name | Output Type | Описание |
+|------------+------------+----+-------------+-------------+----------|
+| time       | Timestamp  |    | time        | String      |          |
+|------------+------------+----+-------------+-------------+----------|
+#+BEGIN_SRC java
+public static TimestampToStringOutput timestampToString(TimestampToStringInput input) {
+    TimestampToStringOutput output = new TimestampToStringOutput(input.getTime().toString());
+    return output;
+}
+#+END_SRC
+
+*** функция prepareInserts
+| Input Name | Input Type | -> | Output Name | Output Type | Описание |
+|------------+------------+----+-------------+-------------+----------|
+| time       | Timestamp  |    | time        | Timestamp   |          |
+| name       | String     |    | name        | String      |          |
+| status     | String     |    | status      | String      |          |
+|------------+------------+----+-------------+-------------+----------|
+#+BEGIN_SRC java
+public static PrepareInsertsOutput prepareInserts(PrepareInsertsInput input) {
+    PrepareInsertsOutput output = new PrepareInsertsOutput();
+    output.setName(input.getName());
+    output.setStatus(input.getStatus());
+    output.setTime(Timestamp.from(input.getTime()));
+    return output;
+}
+#+END_SRC
