@@ -1,0 +1,25 @@
+@slf4j
+@Component
+@RequiredArgsConstructor
+public class ${#property methodId} Logic {
+    private static final RowMapper<${#property mapper OutputType}> mapper = new RwMapper();
+    private final NamedParameterJdbcTemplate named ParameterJdbcTemplate${#property config};
+
+    public ${#property outputType}logic (${#property inputType} input) {
+        var parameters = new MapSqlParameterSource();
+        
+        ${#template filling_parameters[idx]:###
+        parameters.addValue("${#property \lowerCase{\camelusToSnake {daoInputFieldNames}} [__idx__]}", input.get${#property \upFirst{dao InputFieldNames} [____idx___]}());###}
+        
+        ${#conditional [${#property strategy} == "first"]:###
+        var response = namedParameterJdbcTemplate${#property config} .queryForObject("${#property codeBlock}", parameters, mapper);
+        var response_json = new Gson().toJson(response);
+        log.debug("${#property methodId} response: " + response_json); return response; ###}
+        
+        ${#conditional [${#property strategy} == "all"]:### var list =
+            new ArrayList<${#property mapper OutputType}>( namedParameter JdbcTemplate${#property config}.query( "${#property codeBlock}", parameters, mapper));
+        var response_json = new Gson().toJson(list);
+        log.debug("${#property methodId} response: " + response_json); var output = new ${#property outputType}();
+        output.set${#property \upFirst{mapperOutputName}}(list); return output;###}
+    }
+}
