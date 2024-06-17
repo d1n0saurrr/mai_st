@@ -5,7 +5,7 @@
 
 -------------
 
-* [приложение dec_test_app](https://html-preview.github.io/?url=https://github.com/d1n0saurrr/mai_st/blob/main/dec_test_app.html)
+* [[https://html-preview.github.io/?url=https://github.com/d1n0saurrr/mai_st/blob/main/dec_test_app.html][приложение dec_test_app]]
 - contract_path: contract.yaml
 - entry: openapi
 - description: что-то делает
