@@ -1,0 +1,25 @@
+package ${property groupId}.${property projectName}.service;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@Service
+public class ${property serviceClassName} {
+
+    private final ${property logicServiceClass} logicService;
+
+    @Autowired
+    public ${property serviceClassName}(${property logicServiceClass} logicService) {
+        this.logicService = logicService;
+    }
+
+    @KafkaListener(topics = "${property topicName}", groupId = "${property groupId}")
+    public void consume(${property messageClass} message) {
+        log.debug("Received message: {}", message);
+        // Example: Save message to database
+        logicService.processMessage(message);
+    }
+}
