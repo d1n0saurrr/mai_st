@@ -1,0 +1,28 @@
+package ${property groupId}.${property \[withoutDashes(projectName)]}.builder.${property operationName};
+
+import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Primary;
+import org.springframework.beans.factory.annotation.Qualifier;
+import ${property groupId}.${property \[withoutDashes(projectName)]}.dto.*;
+#if (${property isKinetecoConfLink} == '###')
+import ${property groupId}.${property \[withoutDashes(projectName)]}.functions.*;###
+#end
+#if (${property isWebOperation} == '###')
+import static ${property groupId}.${property \[withoutDashes(projectName)]}.dto.${property sequentialId}Api.*;###
+#end
+#if (${template sequentialWebClientNames[__idx__]} == '###')
+import static ${property groupId}.${property \[withoutDashes(projectName)]}.dto.${property sequentialWebClientNames[__idx__]}Api.*;###
+#end
+
+import java.sql.Timestamp;
+
+@Component
+public class ${property methodId}Logic {
+    ${property configValuesText}
+
+    public ${property outputType} logic(${property inputType} ${property \[downFirst(inputType)]}${template throw\[idx]:###}${property throwTypes[__idx__]} ${property \[downFirst(throwTypes)[__idx__]}###}) {
+        var ${property \[downFirst(outputType)]} = new ${property outputType}();
+        ${property conversionText}
+        return ${property \[downFirst(outputType)]};
+    }
+}
