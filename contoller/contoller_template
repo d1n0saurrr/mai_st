@@ -1,0 +1,25 @@
+@Slf4j
+@RestController
+@RequiredArgsConstructor
+@Crossorigin("*")
+public class ${#property \upFirst(methodId)}Controller implements ${property \upFirst(methodId)}ApiDelegate {
+    private final ${@property \upFirst(methodId)}Logic ${#property downFirst(methodId)}Operation;
+
+    @Override
+    public ResponseEntity<${#property outputType}
+            ${@property downFirst (methodId)}(${@property \upFirst(methodId)}ApiRequest param) {
+        MDC.put("operationName", "$(#property sequentialId)");
+        MDC.put("LoggerHelp", "start");
+        log.info("${#property \downFirst(methodId)} start");
+        var response = ${#property \downFirst(methodId)}Operation.process(param);
+        MDC.put("operationName"," "${#property sequentialId}");
+        MDC.put("loggerHelp", "success");
+        log.info("${#property \downFirst(methodId)} success");
+        return Optional.of(response).map(content -> ResponseEntity
+            .status(HttpStatus.OK)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(content)
+            .orElseThrow(()->
+                new NoSuchElementException("No data found for ${#property downFirst(methodId)} request"));
+    }
+}
