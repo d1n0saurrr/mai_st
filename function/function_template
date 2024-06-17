@@ -1,0 +1,17 @@
+package ${#property groupId}.${#property \withoutDashes {projectName}}.functions;
+import lombok.Data;
+import java.util.*;
+import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import ${#property groupId}.${#property withoutDashes {projectName}}.dto.*;
+import ${#property groupId}.${#property \withoutDashes {projectName}}.logic.*;
+${#property functionImports}
+
+@Component
+public class ${#property functionNameUpFirst} {
+    ${#property functionBody}
+}
